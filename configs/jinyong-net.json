@@ -1,0 +1,45 @@
+{
+  "site_name": "金庸小说全集网",
+  "book_url_template": "http://jinyong.net.cn/{id}/",
+  "book_name_regex": "",
+  "encoding": "UTF-8",
+  "request": {
+    "delay_seconds": 1.5,
+    "timeout_seconds": 20,
+    "retries": 2,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0",
+    "respect_robots": true
+  },
+  "selectors": {
+    "book_name": ".novel h1",
+    "chapter_links": ".cat_box dd a",
+    "chapter_title": "title",
+    "chapter_content": ".post .entry",
+    "remove": [
+      "script",
+      "style",
+      "iframe",
+      "ins",
+      ".entry > .mark",
+      ".entry > .setfont",
+      ".entry > .ad_h",
+      ".entry > .pagenavitation",
+      ".entry > .pagenavitop",
+      ".entry .nav",
+      ".entry .ad",
+      ".entry .ads",
+      ".entry table"
+    ]
+  },
+  "filters": {
+    "include_url_regex": "\\.html?$",
+    "exclude_url_regex": "(index|default)\\.html?$"
+  },
+  "content_filters": {
+    "stop_before_text_regex": [
+      "一秒钟记住本站网址",
+      "金庸小说改编的各个版本影视作品"
+    ],
+    "drop_line_regex": []
+  }
+}
