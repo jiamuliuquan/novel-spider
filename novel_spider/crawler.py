@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from .config import SpiderConfig
 from .fetcher import Fetcher
 from .models import Chapter, ChapterLink
-from .parser import parse_book_name, parse_chapter, parse_chapter_links
+from .parser import parse_book_chapters, parse_book_name, parse_chapter
 from .progress import ChapterCache, ProgressStore
 
 LogFn = Callable[[str], None]
@@ -30,11 +30,11 @@ class NovelCrawler:
         book_url = self._book_url()
         self.log(f"Fetching catalog: {book_url}")
         result = self.fetcher.fetch(book_url)
-        self._resolve_book_name(result.html)
+        self._resolve_book_name(result.url, result.html)
         self._ensure_state()
-        links = parse_chapter_links(result.html, result.url, self.config)
+        links = parse_book_chapters(result.url, result.html, self.config)
         if not links:
-            raise ValueError("No chapter links found. Check selectors.chapter_links and filters.")
+            raise ValueError("No chapter links found. Check book.chapters or parse_book_chapters hook.")
         self.log(f"Found {len(links)} chapter links.")
         return links
 
@@ -64,11 +64,11 @@ class NovelCrawler:
 
         return chapters
 
-    def _resolve_book_name(self, catalog_html: str) -> None:
+    def _resolve_book_name(self, catalog_url: str, catalog_html: str) -> None:
         if self.book_name:
             return
 
-        self.book_name = parse_book_name(catalog_html, self.config) or _name_from_url(self._book_url())
+        self.book_name = parse_book_name(catalog_url, catalog_html, self.config) or _name_from_url(self._book_url())
         self.log(f"Book name: {self.book_name}")
 
     def _ensure_state(self) -> None:

@@ -10,7 +10,7 @@ from .exporters import export_chapters
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="novel-spider", description="Configurable novel crawler.")
-    parser.add_argument("--config", "-c", required=True, help="Config name or path, without .json if it is under configs/.")
+    parser.add_argument("--config", "-c", required=True, help="Config name or path, without .py if it is under configs/.")
     parser.add_argument("--id", help="Book id used by the site config's book_url_template.")
     parser.add_argument("--name", help="Optional manual book name. Otherwise it is read from the catalog page.")
     parser.add_argument("--batch", action="store_true", help="Treat --config as a batch config.")

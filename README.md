@@ -63,16 +63,15 @@ novel-spider --config jinyong-net --id yitiantulongji --force
 
 ## 批量下载
 
-批量配置只引用站点配置，然后在 `books` 里放多本书的 ID：
+批量配置也是 Python。只需要引用站点配置，然后在 `BOOKS` 里放多本书的 ID：
 
-```json
-{
-  "config": "jinyong-net",
-  "books": [
-    {"name": "", "id": "yitiantulongji"},
-    {"name": "手动书名", "id": "shediaoyingxiongzhuan"}
-  ]
-}
+```python
+SITE_CONFIG = "jinyong-net"
+
+BOOKS = [
+    "yitiantulongji",
+    {"id": "shediaoyingxiongzhuan", "name": "射雕英雄传"},
+]
 ```
 
 运行：
@@ -95,44 +94,107 @@ novel-spider --config jinyong-net-batch --batch --dry-run
 
 ## 配置说明
 
-配置文件使用 JSON，示例见 `configs/site.template.json`。
+配置文件只支持 Python，示例见 `configs/site-template.py`。省略后缀时会自动在 `configs/` 下查找同名 `.py` 文件。
+
+Python 配置会执行本地代码，只运行你信任的配置文件。
+
+最小站点配置：
+
+```python
+CONFIG = {
+    "site": {
+        "name": "example",
+        "home": "https://example.com/",
+        "desc": "",
+    },
+    "book": {
+        "url_template": "https://example.com/{id}/",
+        "name_selector": ".book-title, h1, title",
+        "chapters": {
+            "selector": ".chapter-list li",
+            "url_selector": "a[href]",
+            "name_selector": "a",
+        },
+    },
+    "chapter": {
+        "content_selector": ".chapter-content p",
+    },
+}
+```
 
 常用字段：
 
-- `site_name`: 站点名称，仅用于日志和进度文件
-- `book_url_template`: 目录页 URL 模板。`{id}` 会被命令里的 `--id` 或批量书单里的 `id` 替换
-- `book_url`: 固定目录页 URL，可选。适合只抓一本的配置
-- `book_name`: 书名，可选。不填时会从目录页自动读取
-- `book_name_regex`: 可选。对自动读取到的书名再做一次正则提取
+- `site.name`: 站点名称，仅用于日志和进度文件
+- `site.home`: 站点首页，可选
+- `site.desc`: 站点描述，可选
+- `book.url_template`: 目录页 URL 模板。`{id}` 会被命令里的 `--id` 或批量书单里的 `id` 替换
+- `book.url`: 固定目录页 URL，可选。适合只抓一本的配置
+- `book.name`: 书名，可选。不填时会从目录页自动读取
+- `book.name_regex`: 可选。对自动读取到的书名再做一次正则提取
+- `book.name_selector`: 书名选择器，可选
+- `book.chapters.selector`: 目录页里每一个章节条目的选择器
+- `book.chapters.url_selector`: 从章节条目里获取链接的选择器
+- `book.chapters.name_selector`: 从章节条目里获取标题的选择器，优先读取 `title` 属性，其次读取文本
+- `chapter.content_selector`: 章节页正文容器选择器
 - `encoding`: 可选。目标站编码，如 `utf-8`、`gbk`。不填则自动猜测
-- `request.delay_seconds`: 每次请求之间的等待秒数
-- `request.timeout_seconds`: 请求超时时间
-- `request.user_agent`: User-Agent
-- `request.respect_robots`: 是否尊重 robots.txt，默认 true
-- `selectors.chapter_links`: 章节链接选择器
-- `selectors.book_name`: 书名选择器
-- `selectors.chapter_title`: 章节标题选择器
-- `selectors.chapter_content`: 正文选择器
-- `selectors.remove`: 正文中需要移除的元素选择器列表
-- `filters.include_url_regex`: 只保留匹配的章节 URL
-- `filters.exclude_url_regex`: 排除匹配的章节 URL
-- `content_filters.stop_before_text_regex`: 正文行匹配这些正则时，从该行开始丢弃后续内容，适合清掉正文末尾推广
-- `content_filters.drop_line_regex`: 丢弃匹配这些正则的单行内容
 
-例如正文末尾有“相关推荐”“展开阅读”之类的广告段，可以这样配置：
+请求参数也可以按需覆盖；不写就使用默认值：
 
-```json
-"content_filters": {
-  "stop_before_text_regex": ["相关推荐", "展开阅读"],
-  "drop_line_regex": ["^\\s*更多\\s*$"]
+- `delay_seconds`: 每次请求之间的等待秒数，默认 1.0
+- `timeout_seconds`: 请求超时时间，默认 20.0
+- `retries`: 请求失败后的重试次数，默认 2
+- `user_agent`: User-Agent，默认使用工具自己的标识
+- `respect_robots`: 是否尊重 robots.txt，默认 true
+
+### Hook 特殊适配
+
+还可以按需导出这些 hook：
+
+- `parse_book_name(url, html, config) -> str | None`
+- `format_book_name(name, config) -> str | None`
+- `parse_book_chapters(url, html, config) -> list[ChapterLink] | None`
+- `format_book_chapters(chapters, config) -> list[ChapterLink] | None`
+- `parse_chapter_content(url, html, config) -> str | None`
+- `format_chapter_content(content, config) -> str | None`
+
+`parse_*` hook 返回 `None` 时会回退到默认解析逻辑；`format_*` hook 返回 `None` 时会保留当前解析结果。
+
+例如只对正文做额外清洗：
+
+```python
+CONFIG = {
+    "site": {"name": "example"},
+    "book": {
+        "url_template": "https://example.com/{id}/",
+        "chapters": {
+            "selector": ".chapter-list li",
+            "url_selector": "a[href]",
+            "name_selector": "a",
+        },
+    },
+    "chapter": {
+        "content_selector": ".chapter-content p",
+    },
 }
+
+
+def format_chapter_content(content, config):
+    lines = [line for line in content.splitlines() if "广告" not in line]
+    return "\n\n".join(lines)
+```
+
+如果目录里混入了非章节链接，也不要再加通用 `include/exclude` 配置，直接写 `format_book_chapters`：
+
+```python
+def format_book_chapters(chapters, config):
+    return [chapter for chapter in chapters if chapter.url.endswith(".html")]
 ```
 
 ## 针对 jinyong.net.cn 这类老站
 
 这类页面通常是静态 HTML，章节目录和正文都可以通过 CSS 选择器解析。因为页面结构可能会变，建议先用浏览器打开目录页，右键检查章节链接和正文容器，再填入配置。
 
-现有的 `configs/jinyong-net.json` 是站点规则，`configs/jinyong-net-batch.json` 是书单示例。
+现有的 `configs/jinyong-net.py` 是站点规则，`configs/jinyong-net-batch.py` 是书单示例。
 
 ## 项目结构
 
